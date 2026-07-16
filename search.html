@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi Search </title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #141414; /* Netflix deep black/grey background */
+            --card-bg: #181818; /* Netflix popup/card background */
+            --input-bg: #2f2f2f; /* Netflix input grey */
+            --text-color: #ffffff;
+            --text-muted: #aaaaaa;
+            --accent-color: #e50914; /* Netflix Red */
+            --accent-hover: #b81d24; /* Darker red */
+            --accent-glow: rgba(229, 9, 20, 0.4);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --border-focus: #e50914;
+            --transition-netflix: all 0.25s cubic-bezier(0.5, 0, 0.1, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Subtle Netflix Spotlight Red Glow in background */
+        .netflix-spotlight {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .spotlight-blob {
+            position: absolute;
+            width: 70vw;
+            height: 70vw;
+            max-width: 800px;
+            max-height: 800px;
+            background: radial-gradient(circle, rgba(229, 9, 20, 0.15) 0%, rgba(20, 20, 20, 0) 70%);
+            border-radius: 50%;
+            top: -10%;
+            left: 50%;
+            transform: translateX(-50%);
+            filter: blur(80px);
+        }
+
+        /* Container */
+        .portal-container {
+            width: 100%;
+            max-width: 850px;
+            padding: 30px 20px;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            animation: netflixFadeIn 0.6s cubic-bezier(0.5, 0, 0.1, 1);
+        }
+
+        @keyframes netflixFadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Top Header Navigation */
+        .portal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Profile Dropdown */
+        .profile-container {
+            position: relative;
+            margin-left: auto; /* Aligns to the right */
+        }
+
+        .profile-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: var(--transition-netflix);
+        }
+
+        .profile-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .profile-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        .profile-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .profile-btn .caret {
+            width: 14px;
+            height: 14px;
+            fill: none;
+            stroke: var(--text-color);
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: var(--transition-netflix);
+        }
+
+        .profile-container.open .caret {
+            transform: rotate(180deg);
+        }
+
+        .profile-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            width: 200px;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+            transition: var(--transition-netflix);
+            z-index: 100;
+            padding: 5px 0;
+        }
+
+        .profile-container.open .profile-menu {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .profile-item {
+            display: block;
+            padding: 10px 15px;
+            color: #ddd;
+            text-decoration: none;
+            font-size: 13px;
+            transition: var(--transition-netflix);
+        }
+
+        .profile-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .profile-item.toggle-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            gap: 12px;
+        }
+
+        /* Custom toggle switch for checkboxes in profile menu */
+        .profile-item.toggle-label input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 32px;
+            height: 18px;
+            background-color: #444;
+            border-radius: 9px;
+            position: relative;
+            outline: none;
+            cursor: pointer;
+            transition: var(--transition-netflix);
+            flex-shrink: 0;
+        }
+
+        .profile-item.toggle-label input[type="checkbox"]:checked {
+            background-color: var(--accent-color);
+        }
+
+        .profile-item.toggle-label input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: #fff;
+            top: 2px;
+            left: 2px;
+            transition: var(--transition-netflix);
+        }
+
+        .profile-item.toggle-label input[type="checkbox"]:checked::before {
+            transform: translateX(14px);
+        }
+
+        /* Modern Netflix-Style Clock Panel */
+        .clock-container {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .clock-greeting {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 5px;
+            text-transform: capitalize;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .clock-time {
+            font-size: 64px;
+            font-weight: 700;
+            letter-spacing: -2px;
+            color: var(--text-color);
+            line-height: 1;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Analog Clock Styles */
+        .analog-clock {
+            width: 160px;
+            height: 160px;
+            margin: 15px auto;
+            border: 4px solid rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            position: relative;
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.6);
+            display: none;
+        }
+
+        .clock-face {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .clock-center {
+            width: 10px;
+            height: 10px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            border-radius: 4px;
+            z-index: 5;
+        }
+
+        .hour-hand {
+            width: 5px;
+            height: 45px;
+            background-color: var(--text-color);
+            margin-left: -2.5px;
+        }
+
+        .minute-hand {
+            width: 3.5px;
+            height: 60px;
+            background-color: #dddddd;
+            margin-left: -1.75px;
+        }
+
+        .second-hand {
+            width: 2px;
+            height: 68px;
+            background-color: var(--accent-color);
+            margin-left: -1px;
+            z-index: 6;
+        }
+
+        /* Hour markers */
+        .mark {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .mark-12, .mark-6 {
+            width: 2px;
+            height: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .mark-12 { top: 6px; }
+        .mark-6 { bottom: 6px; }
+
+        .mark-3, .mark-9 {
+            width: 8px;
+            height: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .mark-3 { right: 6px; }
+        .mark-9 { left: 6px; }
+
+        .clock-date {
+            font-size: 14px;
+            color: var(--accent-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 8px;
+        }
+
+        /* Branding logo styled in Netflix logo form */
+        .logo-wrap {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .logo-title {
+            font-size: 38px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            display: inline-block;
+            transform: scaleY(1.05);
+        }
+
+        .logo-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-top: 4px;
+        }
+
+        /* Search Bar & Dropdown Wrapper */
+        .search-wrapper {
+            position: relative;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid var(--border-color);
+            border-radius: 4px; /* Netflix uses boxy/flat borders */
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            transition: var(--transition-netflix);
+        }
+
+        .search-wrapper:focus-within {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 20px var(--accent-glow), 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Search Input */
+        .search-input {
+            flex: 1;
+            height: 52px;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 17px;
+            padding: 0 16px;
+            user-select: text;
+        }
+
+        .search-input::placeholder {
+            color: #777777;
+        }
+
+        /* Voice Search Button */
+        .voice-search-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: var(--transition-netflix);
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .voice-search-btn:hover {
+            color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.08);
+            transform: scale(1.08);
+        }
+
+        .voice-search-btn:active {
+            transform: scale(0.95);
+        }
+
+        .voice-search-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        /* Voice search active pulse effect */
+        .voice-search-btn.listening {
+            color: #ffffff !important;
+            background: var(--accent-color) !important;
+            box-shadow: 0 0 15px var(--accent-glow) !important;
+            animation: pulse-red 1.2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(229, 9, 20, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(229, 9, 20, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(229, 9, 20, 0);
+            }
+        }
+
+        /* Search Button (Netflix red filled button) */
+        .search-btn {
+            width: 120px;
+            height: 52px;
+            border-radius: 4px;
+            background: var(--accent-color);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: white;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: var(--transition-netflix);
+        }
+
+        .search-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .search-btn:active {
+            transform: scale(0.98);
+        }
+
+        .search-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Engine Selector Dropdown on the Left */
+        .engine-selector {
+            position: relative;
+            z-index: 10;
+        }
+
+        .current-engine {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 16px;
+            height: 52px;
+            background: var(--input-bg);
+            border: 1px solid transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition-netflix);
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--text-color);
+        }
+
+        .current-engine:hover {
+            background: #3f3f3f;
+        }
+
+        .current-engine .caret {
+            width: 14px;
+            height: 14px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: var(--transition-netflix);
+            color: var(--text-muted);
+        }
+
+        .engine-selector.open .current-engine .caret {
+            transform: rotate(180deg);
+            color: var(--text-color);
+        }
+
+        .current-engine-icon {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .current-engine-icon img {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            border-radius: 2px;
+        }
+
+        /* Dropdown Menu styling (Netflix Dark Popover style) */
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            background: #181818;
+            border: 1px solid #333333;
+            border-radius: 4px;
+            width: 700px;
+            max-height: 450px;
+            overflow-y: auto;
+            padding: 6px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
+            opacity: 0;
+            transform: translateY(-8px);
+            pointer-events: none;
+            transition: var(--transition-netflix);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+
+        .dropdown-menu::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .dropdown-menu::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .dropdown-menu::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        .engine-selector.open .dropdown-menu {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Category Header in Dropdown */
+        .dropdown-category-title {
+            grid-column: 1 / -1;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 12px 14px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 8px;
+            user-select: none;
+        }
+
+        .dropdown-category-title:first-child {
+            margin-top: 0;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: var(--transition-netflix);
+            text-align: left;
+            background: transparent;
+            border: none;
+            width: 100%;
+            color: var(--text-color);
+            font-family: inherit;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .dropdown-item.active {
+            background: rgba(229, 9, 20, 0.15);
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .dropdown-item-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .dropdown-item-icon img {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            border-radius: 2px;
+        }
+
+        .dropdown-item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dropdown-item-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .dropdown-item-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 210px;
+        }
+
+        /* Netflix Panel Styling */
+        .glass-panel {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        /* Quick Access Shortcuts Netflix style */
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .shortcuts-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .shortcuts-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .shortcut-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 8px;
+            background: #1c1c1c;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            color: var(--text-color);
+            text-decoration: none;
+            transition: var(--transition-netflix);
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .shortcut-card:hover {
+            background: #252525;
+            border-color: var(--accent-color);
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(229, 9, 20, 0.25);
+        }
+
+        .shortcut-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 4px;
+            object-fit: contain;
+            filter: grayscale(20%);
+            transition: var(--transition-netflix);
+        }
+
+        .shortcut-card:hover .shortcut-icon {
+            filter: grayscale(0%);
+        }
+
+        .shortcut-label {
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 95px;
+            color: #dddddd;
+        }
+
+        @media (max-width: 580px) {
+            .logo-title {
+                font-size: 28px;
+            }
+            .dropdown-menu {
+                width: calc(100vw - 40px);
+                max-width: 700px;
+                grid-template-columns: 1fr;
+            }
+            .search-btn {
+                width: 52px;
+            }
+            .search-btn span {
+                display: none;
+            }
+            .clock-time {
+                font-size: 48px;
+            }
+        }
+
+        /* Search History Section */
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .history-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .history-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: #232323;
+            border: 1px solid transparent;
+            border-radius: 2px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition-netflix);
+            font-weight: 500;
+        }
+
+        .history-tag:hover {
+            background: #333333;
+            border-color: var(--accent-color);
+            color: var(--text-color);
+        }
+
+        .history-tag .delete-hist-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+            color: var(--text-muted);
+            font-size: 11px;
+            cursor: pointer;
+            transition: var(--transition-netflix);
+        }
+
+        .history-tag .delete-hist-item:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .clear-hist-btn {
+            font-size: 12px;
+            color: var(--accent-color);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition-netflix);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .clear-hist-btn:hover {
+            color: var(--accent-hover);
+        }
+
+        .empty-history-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Netflix Spotlight Background -->
+    <div class="netflix-spotlight">
+        <div class="spotlight-blob"></div>
+    </div>
+
+    <div class="portal-container">
+        
+        <!-- Header -->
+        <div class="portal-header">
+            <div class="profile-container" id="profileContainer">
+                <div class="profile-btn" id="profileBtn">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="Profile" class="profile-avatar">
+                    <span class="profile-name">User</span>
+                    <svg class="caret" viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+                <div class="profile-menu" id="profileMenu">
+                    <label class="profile-item toggle-label">
+                        <span>Open in new tab</span>
+                        <input type="checkbox" id="openNewTabToggle" checked>
+                    </label>
+                    <label class="profile-item toggle-label">
+                        <span>Recent searches</span>
+                        <input type="checkbox" id="recentSearchesToggle" checked>
+                    </label>
+                    <label class="profile-item toggle-label">
+                        <span>24-hour format</span>
+                        <input type="checkbox" id="clockFormat24Toggle">
+                    </label>
+                    <label class="profile-item toggle-label">
+                        <span>Show seconds</span>
+                        <input type="checkbox" id="clockSecondsToggle" checked>
+                    </label>
+                    <label class="profile-item toggle-label">
+                        <span>Analog clock</span>
+                        <input type="checkbox" id="clockAnalogToggle">
+                    </label>
+                    <a href="#" class="profile-item" id="changeNameBtn">Change Name</a>
+                    <a href="#" class="profile-item" id="changeBgBtn">Change Background</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clock Widget -->
+        <div class="clock-container">
+            <div class="clock-greeting" id="clockGreeting"></div>
+            <div class="clock-time" id="clockTime">00:00:00 AM</div>
+            <!-- Analog Clock Widget -->
+            <div class="analog-clock" id="analogClock">
+                <div class="clock-face">
+                    <div class="hand hour-hand" id="hourHand"></div>
+                    <div class="hand minute-hand" id="minuteHand"></div>
+                    <div class="hand second-hand" id="secondHand"></div>
+                    <div class="clock-center"></div>
+                    <div class="mark mark-12"></div>
+                    <div class="mark mark-3"></div>
+                    <div class="mark mark-6"></div>
+                    <div class="mark mark-9"></div>
+                </div>
+            </div>
+            <div class="clock-date" id="clockDate">Loading Date...</div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-wrapper">
+            <!-- Left: Engine Selector -->
+            <div class="engine-selector" id="engineSelector">
+                <button class="current-engine" id="currentEngineBtn" type="button">
+                    <span class="current-engine-icon" id="currentEngineIcon"></span>
+                    <span id="currentEngineName">Google</span>
+                    <svg class="caret" viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                
+                <!-- Engine Dropdown List -->
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <!-- Loaded dynamically via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Middle: Search Input -->
+            <input type="text" class="search-input" id="searchInput" placeholder="Search with Google..." autocomplete="off" autofocus>
+
+            <!-- Voice Search Button -->
+            <button class="voice-search-btn" id="voiceSearchBtn" type="button" aria-label="Voice Search" title="Voice Search">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+            </button>
+
+            <!-- Right: Search Submit Button -->
+            <button class="search-btn" id="searchSubmitBtn" type="button" aria-label="Perform Search">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span>Search</span>
+            </button>
+        </div>
+
+        <!-- Quick Access Section -->
+        <div class="glass-panel">
+            <div class="panel-title">
+                <span>Quick Access</span>
+                <span style="font-size: 11px; opacity: 0.6; text-transform: none;">Bookmarks</span>
+            </div>
+            <div class="shortcuts-grid" id="shortcutsGrid">
+                <!-- Loaded dynamically via JavaScript -->
+            </div>
+        </div>
+
+        <!-- Search History Panel -->
+        <div class="glass-panel" id="historyPanel">
+            <div class="panel-title">
+                <span>Recent Searches</span>
+                <button class="clear-hist-btn" id="clearHistoryBtn" type="button">Clear All</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <!-- Loaded dynamically via JavaScript -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript logic -->
+    <script>
+        // Search Engine Details List Grouped by Categories
+        const searchEngines = [
+            // --- WEB SEARCH ---
+            { id: 'google', name: 'Google', category: 'Web Search', desc: 'Google web search engine', url: 'https://www.google.com/search?q=' },
+            { id: 'bing', name: 'Bing', category: 'Web Search', desc: 'Microsoft Bing search', url: 'https://www.bing.com/search?q=' },
+            { id: 'yahoo', name: 'Yahoo', category: 'Web Search', desc: 'Yahoo search portal', url: 'https://search.yahoo.com/search?p=' },
+            { id: 'yandex', name: 'Yandex', category: 'Web Search', desc: 'Yandex search engine', url: 'https://yandex.com/search/?text=' },
+            { id: 'sogou', name: 'Sogou', category: 'Web Search', desc: 'Sogou Chinese search engine', url: 'https://www.sogou.com/web?query=' },
+            { id: 'so-360', name: '360 Search', category: 'Web Search', desc: '360 So Chinese search', url: 'https://www.so.com/s?q=' },
+            { id: 'ask', name: 'Ask.com', category: 'Web Search', desc: 'Ask Q&A search', url: 'https://www.ask.com/web?q=', icon: 'Ask.com.svg' },
+            { id: 'aol', name: 'AOL', category: 'Web Search', desc: 'AOL web search index', url: 'https://search.aol.com/aol/search?q=', icon: 'AOL.svg' },
+            { id: 'baidu', name: 'Baidu', category: 'Web Search', desc: 'Baidu Chinese search', url: 'https://www.baidu.com/s?wd=' },
+
+            // --- AI & CHAT ---
+            { id: 'google-ai', name: 'Google AI', category: 'AI & Chat', desc: 'Google AI Overview search', url: 'https://www.google.com/search?udm=50&q=', icon: 'Google-AI.webp' },
+            { id: 'duckduck-ai', name: 'DuckDuck AI', category: 'AI & Chat', desc: 'DuckDuckGo AI Chat search', url: 'https://duckduckgo.com/?ia=chat&q=' },
+            { id: 'perplexity', name: 'Perplexity', category: 'AI & Chat', desc: 'Perplexity AI answer engine', url: 'https://www.perplexity.ai/search?q=' },
+            { id: 'grok', name: 'Grok', category: 'AI & Chat', desc: 'xAI Grok Search portal', url: 'https://grok.com/search?q=' },
+            { id: 'deepseek', name: 'DeepSeek', category: 'AI & Chat', desc: 'DeepSeek AI search portal', url: 'https://chat.deepseek.com/search?q=' },
+            { id: 'gemini', name: 'Gemini', category: 'AI & Chat', desc: 'Google Gemini AI portal', url: 'https://gemini.google.com/app?q=' },
+            { id: 'chatgpt', name: 'ChatGPT', category: 'AI & Chat', desc: 'OpenAI ChatGPT search', url: 'https://chat.openai.com/?q=' },
+            { id: 'copilot', name: 'Copilot', category: 'AI & Chat', desc: 'Microsoft Copilot AI search', url: 'https://copilot.microsoft.com/?q=' },
+            { id: 'metaso', name: 'MetaSo', category: 'AI & Chat', desc: 'MetaSo AI search assistant', url: 'https://metaso.cn/?q=' },
+            { id: 'you', name: 'You.com', category: 'AI & Chat', desc: 'You.com AI assistant search', url: 'https://you.com/search?q=' },
+
+            // --- PRIVACY & ALTERNATIVES ---
+            { id: 'duckduckgo', name: 'DuckDuckGo', category: 'Privacy & Alternatives', desc: 'Private, tracker-free search', url: 'https://duckduckgo.com/?q=' },
+            { id: 'brave', name: 'Brave Search', category: 'Privacy & Alternatives', desc: 'Brave browser default index', url: 'https://search.brave.com/search?q=' },
+            { id: 'ecosia', name: 'Ecosia', category: 'Privacy & Alternatives', desc: 'Search engine that plants trees', url: 'https://www.ecosia.org/search?q=' },
+            { id: 'mojeek', name: 'Mojeek', category: 'Privacy & Alternatives', desc: 'Independent crawler web index', url: 'https://www.mojeek.com/search?q=' },
+            { id: 'privacywall', name: 'PrivacyWall', category: 'Privacy & Alternatives', desc: 'Secure privacy search engine', url: 'https://www.privacywall.org/search/secure/?q=' },
+            { id: 'swisscows', name: 'Swisscows', category: 'Privacy & Alternatives', desc: 'Swiss family-friendly private search', url: 'https://swisscows.com/web?query=' },
+            { id: 'qwant', name: 'Qwant', category: 'Privacy & Alternatives', desc: 'Privacy-focused European search', url: 'https://www.qwant.com/?q=' },
+            { id: 'karma', name: 'Karma Search', category: 'Privacy & Alternatives', desc: 'Eco-conscious web search', url: 'https://karmanow.com/search?q=' },
+
+            { id: 'wikipedia', name: 'Wikipedia', category: 'Privacy & Alternatives', desc: 'Wikipedia encyclopedia articles', url: 'https://en.wikipedia.org/wiki/Special:Search?search=' }
+        ];
+
+        // --- QUICK ACCESS ---
+        const quickAccessSites = [
+            { title: 'GAccount', url: 'https://myaccount.google.com', icon: 'myaccount.google.com.svg' },
+            { title: 'Microsoft Account', url: 'https://account.microsoft.com/' },
+            { title: 'Gmail', url: 'https://mail.google.com/mail/u/0/#all', icon: 'mail.google.com.svg' },
+            { title: 'Outlook', url: 'https://outlook.live.com/mail/0/' },
+            { title: 'Yahoo Mail', url: 'https://in.mail.yahoo.com/' },
+            { title: 'Discord', url: 'https://discord.com/channels/@me' },
+            { title: 'Instagram', url: 'https://www.instagram.com/' },
+            { title: 'Facebook', url: 'https://www.facebook.com/' },
+            { title: 'WhatsApp', url: 'https://web.whatsapp.com/', icon: 'whatsapp.svg' },
+            { title: 'Telegram', url: 'https://web.telegram.org/' },
+            { title: 'YouTube', url: 'https://youtube.com/' },
+            { title: 'GitHub', url: 'https://github.com/' },
+            { title: 'X', url: 'https://x.com/' },
+            { title: 'LinkedIn', url: 'https://www.linkedin.com/' },
+            { title: 'Reddit', url: 'https://www.reddit.com/' },
+            { title: 'Pinterest', url: 'https://in.pinterest.com/' },
+            { title: 'Spotify', url: 'https://open.spotify.com/' },
+            { title: 'Quora', url: 'https://www.quora.com/' },
+            { title: 'ChatGPT', url: 'https://chatgpt.com/' },
+            { title: 'Claude', url: 'http://claude.ai/' },
+            { title: 'Gemini', url: 'https://gemini.google.com/' },
+            { title: 'Wikipedia', url: 'https://www.wikipedia.org/' },
+            { title: 'Yandex', url: 'https://yandex.com/' },
+            { title: 'VK', url: 'https://vk.com/' }
+        ];
+
+        let selectedEngine = searchEngines[0]; // Default Google
+
+        // DOM elements
+        const engineSelector = document.getElementById('engineSelector');
+        const currentEngineBtn = document.getElementById('currentEngineBtn');
+        const currentEngineIcon = document.getElementById('currentEngineIcon');
+        const currentEngineName = document.getElementById('currentEngineName');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        const searchInput = document.getElementById('searchInput');
+        const voiceSearchBtn = document.getElementById('voiceSearchBtn');
+        const searchSubmitBtn = document.getElementById('searchSubmitBtn');
+        const shortcutsGrid = document.getElementById('shortcutsGrid');
+        const historyList = document.getElementById('historyList');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        const clockTime = document.getElementById('clockTime');
+        const clockDate = document.getElementById('clockDate');
+        const analogClock = document.getElementById('analogClock');
+        const hourHand = document.getElementById('hourHand');
+        const minuteHand = document.getElementById('minuteHand');
+        const secondHand = document.getElementById('secondHand');
+        const clockFormat24Toggle = document.getElementById('clockFormat24Toggle');
+        const clockSecondsToggle = document.getElementById('clockSecondsToggle');
+        const clockAnalogToggle = document.getElementById('clockAnalogToggle');
+
+        // Clock logic
+        function updateClock() {
+            const now = new Date();
+            const showSeconds = clockSecondsToggle.checked;
+            const use24Hour = clockFormat24Toggle.checked;
+            const isAnalog = clockAnalogToggle.checked;
+
+            if (isAnalog) {
+                clockTime.style.display = 'none';
+                analogClock.style.display = 'block';
+
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+                const seconds = now.getSeconds();
+
+                const hourDegrees = ((hours % 12) * 30) + (minutes * 0.5);
+                const minuteDegrees = (minutes * 6) + (seconds * 0.1);
+                const secondDegrees = seconds * 6;
+
+                hourHand.style.transform = `rotate(${hourDegrees}deg)`;
+                minuteHand.style.transform = `rotate(${minuteDegrees}deg)`;
+                
+                if (showSeconds) {
+                    secondHand.style.display = 'block';
+                    secondHand.style.transform = `rotate(${secondDegrees}deg)`;
+                } else {
+                    secondHand.style.display = 'none';
+                }
+            } else {
+                clockTime.style.display = 'block';
+                analogClock.style.display = 'none';
+
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                let ampm = '';
+
+                if (use24Hour) {
+                    hours = String(hours).padStart(2, '0');
+                } else {
+                    ampm = hours >= 12 ? ' PM' : ' AM';
+                    hours = hours % 12;
+                    hours = hours ? hours : 12;
+                    hours = String(hours).padStart(2, '0');
+                }
+
+                let timeStr = `${hours}:${minutes}`;
+                if (showSeconds) {
+                    timeStr += `:${seconds}`;
+                }
+                timeStr += ampm;
+
+                clockTime.textContent = timeStr;
+            }
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            clockDate.textContent = now.toLocaleDateString('en-US', options);
+
+            // Greeting logic
+            let greeting = 'Good Evening';
+            const currentHour = now.getHours();
+            if (currentHour < 12) greeting = 'Good Morning';
+            else if (currentHour < 18) greeting = 'Good Afternoon';
+            
+            const nameEl = document.querySelector('.profile-name');
+            const userName = nameEl ? nameEl.textContent : 'User';
+            const greetingEl = document.getElementById('clockGreeting');
+            if (greetingEl) {
+                greetingEl.textContent = `${greeting}, ${userName}`;
+            }
+        }
+
+        // Helper to get domain hostname
+        function getDomainFromUrl(url) {
+            try {
+                return new URL(url).hostname;
+            } catch(e) {
+                return 'google.com';
+            }
+        }
+
+        // Initialize Quick Access grid
+        function initQuickAccess() {
+            shortcutsGrid.innerHTML = '';
+            quickAccessSites.forEach(site => {
+                const domain = getDomainFromUrl(site.url);
+                const faviconUrl = `assets/${site.icon || domain + '.png'}`;
+                
+                const card = document.createElement('a');
+                card.className = 'shortcut-card';
+                card.href = site.url;
+                card.target = '_blank';
+                card.innerHTML = `
+                    <img class="shortcut-icon" src="${faviconUrl}" alt="${site.title}" onerror="this.src='assets/google.com.png'">
+                    <span class="shortcut-label">${site.title}</span>
+                `;
+                shortcutsGrid.appendChild(card);
+            });
+        }
+
+        // Initialize engine dropdown items grouped by Category
+        function initDropdown() {
+            dropdownMenu.innerHTML = '';
+            
+            // Group engines by category
+            const categories = {};
+            searchEngines.forEach(engine => {
+                if (!categories[engine.category]) {
+                    categories[engine.category] = [];
+                }
+                categories[engine.category].push(engine);
+            });
+
+            // Render categories and items
+            Object.keys(categories).forEach(catName => {
+                // Header
+                const catHeader = document.createElement('div');
+                catHeader.className = 'dropdown-category-title';
+                catHeader.textContent = catName;
+                dropdownMenu.appendChild(catHeader);
+
+                // Items inside category
+                categories[catName].forEach(engine => {
+                    const domain = getDomainFromUrl(engine.url);
+                    const faviconUrl = `assets/${engine.icon || domain + '.png'}`;
+
+                    const button = document.createElement('button');
+                    button.className = `dropdown-item ${engine.id === selectedEngine.id ? 'active' : ''}`;
+                    button.type = 'button';
+                    button.innerHTML = `
+                        <div class="dropdown-item-icon">
+                            <img src="${faviconUrl}" onerror="this.src='assets/google.com.png'" alt="${engine.name}">
+                        </div>
+                        <div class="dropdown-item-info">
+                            <span class="dropdown-item-name">${engine.name}</span>
+                            <span class="dropdown-item-desc">${engine.desc}</span>
+                        </div>
+                    `;
+                    button.addEventListener('click', () => selectEngine(engine));
+                    dropdownMenu.appendChild(button);
+                });
+            });
+
+            updateSelectorUI();
+        }
+
+        // Change current engine selection
+        function selectEngine(engine) {
+            selectedEngine = engine;
+            
+            // Mark correct menu item active
+            const items = dropdownMenu.querySelectorAll('.dropdown-item');
+            // Select all engine items (button nodes) to sync active class
+            let count = 0;
+            searchEngines.forEach(eng => {
+                // Find all dropdown item buttons and sync classes
+                // The children match index position of searchEngines but skip headers, so search by checking name or mapping
+            });
+            
+            // Let's rebuild/re-init dropdown selection state cleanly
+            initDropdown();
+
+            updateSelectorUI();
+            engineSelector.classList.remove('open');
+            searchInput.placeholder = `Search with ${engine.name}...`;
+            searchInput.focus();
+
+            // Store current engine preference
+            localStorage.setItem('selected_engine_id', engine.id);
+        }
+
+        // Update selector button visual
+        function updateSelectorUI() {
+            const domain = getDomainFromUrl(selectedEngine.url);
+            const faviconUrl = `assets/${selectedEngine.icon || domain + '.png'}`;
+            currentEngineIcon.innerHTML = `<img src="${faviconUrl}" onerror="this.src='assets/google.com.png'" alt="${selectedEngine.name}">`;
+            currentEngineName.textContent = selectedEngine.name;
+        }
+
+        // Toggle dropdown open/close
+        currentEngineBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            engineSelector.classList.toggle('open');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!engineSelector.contains(e.target)) {
+                engineSelector.classList.remove('open');
+            }
+            if (typeof profileContainer !== 'undefined' && profileContainer && !profileContainer.contains(e.target)) {
+                profileContainer.classList.remove('open');
+            }
+        });
+
+        // Profile Dropdown logic
+        const profileContainer = document.getElementById('profileContainer');
+        const profileBtn = document.getElementById('profileBtn');
+        if (profileBtn) {
+            profileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                profileContainer.classList.toggle('open');
+            });
+        }
+
+        // Handle search submissions
+        function executeSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Save search to history
+            saveSearchToHistory(query);
+
+            // Redirect to search engine results page
+            const targetUrl = selectedEngine.url + encodeURIComponent(query);
+            const openInNewTab = document.getElementById('openNewTabToggle').checked;
+            if (openInNewTab) {
+                window.open(targetUrl, '_blank');
+            } else {
+                window.location.href = targetUrl;
+            }
+
+            // Clear input after search
+            searchInput.value = '';
+            loadHistoryUI();
+        }
+
+        // Event listeners for searches
+        searchSubmitBtn.addEventListener('click', executeSearch);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                executeSearch();
+            }
+        });
+
+        // localStorage History utilities
+        function getHistory() {
+            const hist = localStorage.getItem('search_portal_history');
+            return hist ? JSON.parse(hist) : [];
+        }
+
+        function saveSearchToHistory(query) {
+            let history = getHistory();
+            // Remove duplicates
+            history = history.filter(item => item.toLowerCase() !== query.toLowerCase());
+            // Add to front
+            history.unshift(query);
+            // Cap at 15 items
+            if (history.length > 15) history.pop();
+            localStorage.setItem('search_portal_history', JSON.stringify(history));
+        }
+
+        function deleteHistoryItem(index, event) {
+            event.stopPropagation();
+            let history = getHistory();
+            history.splice(index, 1);
+            localStorage.setItem('search_portal_history', JSON.stringify(history));
+            loadHistoryUI();
+        }
+
+        function loadHistoryUI() {
+            const history = getHistory();
+            historyList.innerHTML = '';
+            
+            if (history.length === 0) {
+                historyList.innerHTML = '<span class="empty-history-text">No recent searches</span>';
+                return;
+            }
+
+            history.forEach((query, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'history-tag';
+                tag.innerHTML = `
+                    <span>${escapeHTML(query)}</span>
+                    <span class="delete-hist-item" title="Delete record">&times;</span>
+                `;
+                
+                // Click tag to search again
+                tag.addEventListener('click', () => {
+                    searchInput.value = query;
+                    executeSearch();
+                });
+
+                // Click cross to delete history item
+                tag.querySelector('.delete-hist-item').addEventListener('click', (e) => {
+                    deleteHistoryItem(index, e);
+                });
+
+                historyList.appendChild(tag);
+            });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Clear all history
+        clearHistoryBtn.addEventListener('click', () => {
+            localStorage.removeItem('search_portal_history');
+            loadHistoryUI();
+        });
+
+        // Profile Name logic
+        const profileNameEl = document.querySelector('.profile-name');
+        const changeNameBtn = document.getElementById('changeNameBtn');
+        const savedName = localStorage.getItem('search_portal_name');
+        if (savedName) {
+            profileNameEl.textContent = savedName;
+        }
+
+        changeNameBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const newName = prompt('Enter your name:', profileNameEl.textContent);
+            if (newName && newName.trim()) {
+                profileNameEl.textContent = newName.trim();
+                localStorage.setItem('search_portal_name', newName.trim());
+            }
+        });
+
+        // Background logic
+        const changeBgBtn = document.getElementById('changeBgBtn');
+        const bodyEl = document.body;
+        const savedBg = localStorage.getItem('search_portal_bg');
+        if (savedBg) {
+            bodyEl.style.background = savedBg;
+        }
+
+        changeBgBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const newBg = prompt('Enter background color (e.g. #222) or image URL:', '');
+            if (newBg) {
+                if (newBg.startsWith('http') || newBg.startsWith('assets/') || newBg.startsWith('data:')) {
+                    bodyEl.style.background = `url('${newBg}') center/cover no-repeat fixed`;
+                } else {
+                    bodyEl.style.background = newBg;
+                }
+                localStorage.setItem('search_portal_bg', bodyEl.style.background);
+            }
+        });
+
+        // Recent Searches Toggle logic
+        const recentSearchesToggle = document.getElementById('recentSearchesToggle');
+        const historyPanel = document.getElementById('historyPanel');
+        const savedHistoryState = localStorage.getItem('search_portal_history_visible');
+        if (savedHistoryState === 'hidden') {
+            recentSearchesToggle.checked = false;
+            historyPanel.style.display = 'none';
+        }
+
+        recentSearchesToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                historyPanel.style.display = 'block';
+                localStorage.setItem('search_portal_history_visible', 'visible');
+            } else {
+                historyPanel.style.display = 'none';
+                localStorage.setItem('search_portal_history_visible', 'hidden');
+            }
+        });
+
+        // Voice Search Logic
+        function initVoiceSearch() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                if (voiceSearchBtn) voiceSearchBtn.style.display = 'none';
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = navigator.language || 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            let isListening = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                voiceSearchBtn.classList.add('listening');
+                searchInput.placeholder = 'Listening... Speak now';
+                searchInput.value = '';
+            };
+
+            recognition.onspeechend = () => {
+                recognition.stop();
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                voiceSearchBtn.classList.remove('listening');
+                searchInput.placeholder = `Search with ${selectedEngine.name}...`;
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                isListening = false;
+                voiceSearchBtn.classList.remove('listening');
+                
+                if (event.error === 'not-allowed') {
+                    searchInput.placeholder = 'Mic permission denied!';
+                } else if (event.error === 'no-speech') {
+                    searchInput.placeholder = 'No speech detected.';
+                } else {
+                    searchInput.placeholder = 'Error listening.';
+                }
+                
+                setTimeout(() => {
+                    searchInput.placeholder = `Search with ${selectedEngine.name}...`;
+                }, 3000);
+            };
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                searchInput.value = speechResult;
+                setTimeout(() => {
+                    executeSearch();
+                }, 600);
+            };
+
+            voiceSearchBtn.addEventListener('click', () => {
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            });
+        }
+
+        // Initialize state on load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Restore last selected engine
+            const savedEngineId = localStorage.getItem('selected_engine_id');
+            if (savedEngineId) {
+                const engine = searchEngines.find(e => e.id === savedEngineId);
+                if (engine) selectedEngine = engine;
+            }
+
+            // Restore clock options
+            const saved24Format = localStorage.getItem('clock_format_24') === 'true';
+            const savedShowSeconds = localStorage.getItem('clock_show_seconds') !== 'false';
+            const savedAnalogMode = localStorage.getItem('clock_analog_mode') === 'true';
+            
+            clockFormat24Toggle.checked = saved24Format;
+            clockSecondsToggle.checked = savedShowSeconds;
+            clockAnalogToggle.checked = savedAnalogMode;
+
+            clockFormat24Toggle.addEventListener('change', (e) => {
+                localStorage.setItem('clock_format_24', e.target.checked);
+                updateClock();
+            });
+            clockSecondsToggle.addEventListener('change', (e) => {
+                localStorage.setItem('clock_show_seconds', e.target.checked);
+                updateClock();
+            });
+            clockAnalogToggle.addEventListener('change', (e) => {
+                localStorage.setItem('clock_analog_mode', e.target.checked);
+                updateClock();
+            });
+
+            initDropdown();
+            initQuickAccess();
+            loadHistoryUI();
+            initVoiceSearch();
+            
+            // Start clock
+            updateClock();
+            setInterval(updateClock, 1000);
+        });
+    </script>
+</body>
+</html>
