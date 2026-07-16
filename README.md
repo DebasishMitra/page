@@ -48,7 +48,7 @@ Queries can be searched across **28 search engines** grouped by task:
 
 ## 🛠️ Usage Instructions
 
-1. **Deploying the File:** Put the `search.html` in your web server directory along with any assets under the `assets/` subdirectory.
+1. **Deploying the File:** Put the `index.html` in your web server directory along with any assets under the `assets/` subdirectory.
 2. **Perform Searches:**
    - Click on the left-side engine logo selector.
    - Choose your preferred search engine.
@@ -56,6 +56,5 @@ Queries can be searched across **28 search engines** grouped by task:
 3. **Configure Options:** Click on the profile avatar in the top right to toggle display options (formats, clocks, backgrounds, naming).
 
 ## 📄 File Details
-*   **Filename:** [search.html](file:///g:/My%20Drive/website/Fordx10/search.html)
 *   **File Size:** ~56 KB
 *   **Technologies:** HTML5, CSS3, Vanilla JS, Web Speech API, LocalStorage API
